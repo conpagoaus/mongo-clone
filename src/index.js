@@ -10,12 +10,15 @@ let currData = 0;
 
 const loadDbFromUrl = async (mongoUrl) => {
   try {
+    const dbName = mongoUrl.split("/").pop();
+
     const client = new MongoClient(mongoUrl);
 
-    const admin = await client
+    await client
       .connect()
       .catch(`🚫  Auth error! Please double check source and target URL's`);
-    return admin;
+
+    return client.db(dbName);
   } catch (e) {
     console.error("\x1b[31m%s\x1b[0m", "🚫  Failed to connect to DB! ", e);
     process.exit(1);
@@ -28,26 +31,26 @@ const copyCollection = async (source, target, name, bar) => {
       const sourceCollection = await source.collection(name);
       const targetCollection = await target.collection(name);
       const allData = await sourceCollection.find().toArray();
+
       await Promise.all(
         allData.map(async (d) => {
           try {
             if (currData === 0) {
-              bar.start(bar.globalCountOfData, 0);
+              bar.progress.start(bar.globalCountOfData, 0);
             }
 
-            await targetCollection.insert(d, { safe: true });
+            await targetCollection.insert(d);
 
-            bar.update(++currData, {
+            bar.progress.update(++currData, {
               speed: name,
             });
             if (currData === bar.globalCountOfData) {
-              bar.update(currData, {
+              bar.progress.update(currData, {
                 speed: "DONE",
               });
-              return res(bar.stop(), process.exit(0));
+              return res(bar.progress.stop(), process.exit(0));
             }
           } catch (e) {
-            // console.log(e)
             console.error(
               "\x1b[31m%s\x1b[0m",
               "\n🚫  Error inserting in the new collection! Probably duplicated data is already inside new DB."
@@ -119,45 +122,44 @@ const main = async (sourceDbUrl, targetDbUrl, forceDrop) => {
   });
 };
 
-const exitHandler = (exitCode) => {
-  if (exitCode === 1) console.log("\x1b[31m%s\x1b[0m", "🚫  DB not cloned! 😢");
-  if (exitCode === 0)
-    console.log("\x1b[32m%s\x1b[0m", "🎉  DB cloned successfully!");
-  process.exit();
-};
-
-process.stdin.resume();
-process.on("exit", exitHandler.bind());
-
 (async () => {
-  program
-    .version("1.1.0")
-    .usage("-s <SOURCE_MONGO_DB_URL> -t <TARGET_MONGO_DB_URL> [-f]")
-    .option("-s, --source <sourceUrl>", "The source Mongo URL")
-    .option("-t, --target <targetUrl>", "The target Mongo URL")
-    .option("-f, --force", "Delete (drop) the target database before cloning")
-    .action(function (options) {
-      if (!options.source || !options.target) {
-        console.log(
-          "\x1b[31m%s\x1b[0m",
-          "🚫  Error: Please include arguments!"
-        );
-        console.log(
-          "\x1b[33m%s\x1b[0m",
-          "ℹ️  USAGE: mongo-clone -s <SOURCE_MONGO_DB_URL> -t <TARGET_MONGO_DB_URL>"
-        );
-        console.log(
-          "\x1b[33m%s\x1b[0m",
-          "ℹ️  MongoURL example: mongodb://USER:PASS@HOST:PORT/DBNAME"
-        );
-        console.log(
-          "\x1b[36m%s\x1b[0m",
-          "🐛  If you have questions/suggestions/bug to report, ping me on fr1sk@live.com"
-        );
-        process.exit(1);
-      }
-      return main(options.source, options.target, options.force);
-    });
+  try {
+    program
+      .version("1.1.0")
+      .usage("-s <SOURCE_MONGO_DB_URL> -t <TARGET_MONGO_DB_URL> [-f]")
+      .option("-s, --source <sourceUrl>", "The source Mongo URL")
+      .requiredOption("-t, --target <targetUrl>", "The target Mongo URL")
+      .option("-f, --force", "Delete (drop) the target database before cloning")
+      .exitOverride();
 
-  await program.parseAsync(process.argv);
+    program.parse();
+
+    const options = program.opts();
+
+    if (!options.source || !options.target) {
+      console.log("\x1b[31m%s\x1b[0m", "🚫  Error: Please include arguments!");
+      console.log(
+        "\x1b[33m%s\x1b[0m",
+        "ℹ️  USAGE: mongo-clone -s <SOURCE_MONGO_DB_URL> -t <TARGET_MONGO_DB_URL>"
+      );
+      console.log(
+        "\x1b[33m%s\x1b[0m",
+        "ℹ️  MongoURL example: mongodb://USER:PASS@HOST:PORT/DBNAME"
+      );
+      console.log(
+        "\x1b[36m%s\x1b[0m",
+        "🐛  If you have questions/suggestions/bug to report, ping me on fr1sk@live.com"
+      );
+      process.exit(1);
+    }
+
+    await main(options.source, options.target, options.force);
+  } catch (e) {
+    console.error(e);
+    if (e.exitCode === 1)
+      console.log("\x1b[31m%s\x1b[0m", "🚫  DB not cloned! 😢");
+    if (e.exitCode === 0)
+      console.log("\x1b[32m%s\x1b[0m", "🎉  DB cloned successfully!");
+    process.exit(1);
+  }
 })();
