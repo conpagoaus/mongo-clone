@@ -36,9 +36,9 @@
   },
   "dependencies": {
     "bluebird": "^3.7.2",
-    "cli-progress": "^3.11.1",
-    "commander": "^9.3.0",
-    "mongodb": "^4.7.0",
+    "cli-progress": "^3.11.2",
+    "commander": "^9.4.0",
+    "mongodb": "^4.8.1",
     "single-line-log": "^1.1.2",
     "sprintf-js": "^1.1.2"
   }
