@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-const url = require("url");
+
 const Promise = require("bluebird");
 const { MongoClient } = require("mongodb");
 const { program } = require("commander");
@@ -39,7 +39,7 @@ const copyCollection = async (source, target, name, bar) => {
               bar.progress.start(bar.globalCountOfData, 0);
             }
 
-            await targetCollection.insert(d);
+            await targetCollection.insertOne(d);
 
             bar.progress.update(++currData, {
               speed: name,
@@ -85,7 +85,7 @@ const main = async (sourceDbUrl, targetDbUrl, forceDrop) => {
           const sourceCollection = await clientSource.collection(c.name);
           let count = 0;
           if (c.name !== "system.indexes") {
-            count = await sourceCollection.count();
+            count = await sourceCollection.countDocuments();
             log(`🔻 Fetching: ${c.name}`);
           }
           globalCountOfData += count;
@@ -101,7 +101,7 @@ const main = async (sourceDbUrl, targetDbUrl, forceDrop) => {
       }
       await Promise.all(
         collections.map(async (c) => {
-          if (c.name != "system.indexes") {
+          if (c.name !== "system.indexes") {
             await copyCollection(clientSource, clientTarget, c.name, {
               progress,
               globalCountOfData,
