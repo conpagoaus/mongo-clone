@@ -125,7 +125,7 @@ const main = async (sourceDbUrl, targetDbUrl, forceDrop) => {
 (async () => {
   try {
     program
-      .version("1.1.0")
+      .version("1.4.0")
       .usage("-s <SOURCE_MONGO_DB_URL> -t <TARGET_MONGO_DB_URL> [-f]")
       .option("-s, --source <sourceUrl>", "The source Mongo URL")
       .requiredOption("-t, --target <targetUrl>", "The target Mongo URL")
